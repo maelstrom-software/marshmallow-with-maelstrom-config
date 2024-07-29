@@ -1,0 +1,24 @@
+[[directives]]
+image.name = "docker://python:3.12.3-slim"
+added_layers = [
+    { glob = "tests/**.{py,pyc}" },
+    { glob = "src/**.{py,pyc}", strip_prefix = "src/" },
+    { glob = "venv/lib/python3.12/site-packages/marshmallow-3.21.3.dist-info/**", strip_prefix = "venv", prepend_prefix = "/usr/local" },
+    { stubs = ["/dev/{full,null,urandom,random,zero}", "/tests/.pytest_cache/"] }
+]
+mounts = [
+    { type = "tmp", mount_point = "/tmp" },
+    { type = "tmp", mount_point = "/tests/.pytest_cache" },
+    { type = "proc", mount_point = "/proc" },
+    { type = "sys", mount_point = "/sys" },
+    { type = "devices", devices = ["full", "null", "urandom", "random", "zero"] },
+]
+[directives.added_environment]
+PYTEST_XDIST_AUTO_NUM_WORKERS = "1"
+PYTEST_DISABLE_PLUGIN_AUTOLOAD = "1"
+
+# Some of these tests have names that are based on the current time. That breaks some stuff.
+[[directives]]
+filter = """
+node_id.matches(tests/test_deserialization.py::TestFieldDeserialization::test_invalid_datetime_deserialization\\[.* .*\\])"""
+ignore = true
