@@ -2,16 +2,17 @@
 
 import datetime as dt
 import functools
+import typing
 import uuid
 from enum import Enum, IntEnum
+from zoneinfo import ZoneInfo
 
-import pytz
 import simplejson
 
 from marshmallow import Schema, fields, missing, post_load, validate
 from marshmallow.exceptions import ValidationError
 
-central = pytz.timezone("America/Chicago")
+central = ZoneInfo("America/Chicago")
 
 
 class GenderEnum(IntEnum):
@@ -38,7 +39,6 @@ ALL_FIELDS = [
     fields.Integer,
     fields.Boolean,
     fields.Float,
-    fields.Number,
     fields.DateTime,
     fields.Time,
     fields.Date,
@@ -63,17 +63,30 @@ ALL_FIELDS = [
 ##### Custom asserts #####
 
 
-def assert_date_equal(d1, d2):
+def assert_date_equal(d1: dt.date, d2: dt.date) -> None:
     assert d1.year == d2.year
     assert d1.month == d2.month
     assert d1.day == d2.day
 
 
-def assert_time_equal(t1, t2):
+def assert_time_equal(t1: dt.time, t2: dt.time) -> None:
     assert t1.hour == t2.hour
     assert t1.minute == t2.minute
     assert t1.second == t2.second
     assert t1.microsecond == t2.microsecond
+
+
+##### Validation #####
+
+
+def predicate(
+    func: typing.Callable[[typing.Any], bool],
+) -> typing.Callable[[typing.Any], None]:
+    def validate(value: typing.Any) -> None:
+        if func(value) is False:
+            raise ValidationError("Invalid value.")
+
+    return validate
 
 
 ##### Models #####
@@ -85,6 +98,7 @@ class User:
     def __init__(
         self,
         name,
+        *,
         age=0,
         id_=None,
         homepage=None,
@@ -104,9 +118,7 @@ class User:
         # A naive datetime
         self.created = dt.datetime(2013, 11, 10, 14, 20, 58)
         # A TZ-aware datetime
-        self.updated = central.localize(
-            dt.datetime(2013, 11, 10, 14, 20, 58), is_dst=False
-        )
+        self.updated = dt.datetime(2013, 11, 10, 14, 20, 58, tzinfo=central)
         self.id = id_
         self.homepage = homepage
         self.email = email
@@ -126,7 +138,7 @@ class User:
         self.relatives = []
         self.various_data = various_data or {
             "pets": ["cat", "dog"],
-            "address": "1600 Pennsylvania Ave\n" "Washington, DC 20006",
+            "address": "1600 Pennsylvania Ave\nWashington, DC 20006",
         }
 
     @property
@@ -163,26 +175,26 @@ class DummyModel:
 ###### Schemas #####
 
 
-class Uppercased(fields.Field):
+class Uppercased(fields.String):
     """Custom field formatting example."""
 
-    def _serialize(self, value, attr, obj):
+    def _serialize(self, value, attr, obj, **kwargs):
         if value:
             return value.upper()
+        return None
 
 
 def get_lowername(obj):
     if obj is None:
         return missing
     if isinstance(obj, dict):
-        return obj.get("name").lower()
-    else:
-        return obj.name.lower()
+        return obj.get("name", "").lower()
+    return obj.name.lower()
 
 
 class UserSchema(Schema):
     name = fields.String()
-    age = fields.Float()  # type: fields.Field
+    age: fields.Field = fields.Float()
     created = fields.DateTime()
     created_formatted = fields.DateTime(
         format="%Y-%m-%d", attribute="created", dump_only=True
@@ -195,7 +207,7 @@ class UserSchema(Schema):
     homepage = fields.Url()
     email = fields.Email()
     balance = fields.Decimal()
-    is_old = fields.Method("get_is_old")  # type: fields.Field
+    is_old: fields.Field = fields.Method("get_is_old")
     lowername = fields.Function(get_lowername)
     registered = fields.Boolean()
     hair_colors = fields.List(fields.Raw)
@@ -217,7 +229,7 @@ class UserSchema(Schema):
         if obj is None:
             return missing
         if isinstance(obj, dict):
-            age = obj.get("age")
+            age = obj.get("age", 0)
         else:
             age = obj.age
         try:
@@ -230,67 +242,9 @@ class UserSchema(Schema):
         return User(**data)
 
 
-class UserMetaSchema(Schema):
-    """The equivalent of the UserSchema, using the ``fields`` option."""
-
-    uppername = Uppercased(attribute="name", dump_only=True)
-    balance = fields.Decimal()
-    is_old = fields.Method("get_is_old")
-    lowername = fields.Function(get_lowername)
-    species = fields.String(attribute="SPECIES")
-    homepage = fields.Url()
-    email = fields.Email()
-    various_data = fields.Dict()
-
-    def get_is_old(self, obj):
-        if obj is None:
-            return missing
-        if isinstance(obj, dict):
-            age = obj.get("age")
-        else:
-            age = obj.age
-        try:
-            return age > 80
-        except TypeError as te:
-            raise ValidationError(str(te)) from te
-
-    class Meta:
-        fields = (
-            "name",
-            "age",
-            "created",
-            "updated",
-            "id",
-            "homepage",
-            "uppername",
-            "email",
-            "balance",
-            "is_old",
-            "lowername",
-            "species",
-            "registered",
-            "hair_colors",
-            "sex_choices",
-            "finger_count",
-            "uid",
-            "time_registered",
-            "birthdate",
-            "birthtime",
-            "since_created",
-            "various_data",
-        )
-
-
 class UserExcludeSchema(UserSchema):
     class Meta:
         exclude = ("created", "updated")
-
-
-class UserAdditionalSchema(Schema):
-    lowername = fields.Function(lambda obj: obj.name.lower())
-
-    class Meta:
-        additional = ("name", "age", "created", "email")
 
 
 class UserIntSchema(UserSchema):
@@ -317,21 +271,6 @@ class BlogSchema(Schema):
     id = fields.String()
 
 
-class BlogUserMetaSchema(Schema):
-    user = fields.Nested(UserMetaSchema())
-    collaborators = fields.List(fields.Nested(UserMetaSchema()))
-
-
-class BlogSchemaMeta(Schema):
-    """Same as BlogSerializer but using ``fields`` options."""
-
-    user = fields.Nested(UserSchema)
-    collaborators = fields.List(fields.Nested(UserSchema()))
-
-    class Meta:
-        fields = ("title", "user", "collaborators", "categories", "id")
-
-
 class BlogOnlySchema(Schema):
     title = fields.String()
     user = fields.Nested(UserSchema)
@@ -346,7 +285,7 @@ class BlogSchemaOnlyExclude(BlogSchema):
     user = fields.Nested(UserSchema, only=("name",), exclude=("name", "species"))
 
 
-class mockjson:  # noqa
+class mockjson:  # noqa: N801
     @staticmethod
     def dumps(val):
         return b"{'foo': 42}"

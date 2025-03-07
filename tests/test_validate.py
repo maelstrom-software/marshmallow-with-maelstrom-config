@@ -95,7 +95,7 @@ def test_url_relative_valid(valid_url):
     assert validator(valid_url) == valid_url
 
 
-@pytest.mark.parametrize(  # noqa: W605
+@pytest.mark.parametrize(
     "invalid_url",
     [
         "http//example.org",
@@ -203,6 +203,40 @@ def test_url_custom_scheme():
 
     validator = validate.URL(schemes={"http", "https", "ws"})
     assert validator(url) == url
+
+
+@pytest.mark.parametrize(
+    "valid_url",
+    (
+        "file:///tmp/tmp1234",
+        "file://localhost/tmp/tmp1234",
+        "file:///C:/Users/test/file.txt",
+        "file://localhost/C:/Program%20Files/file.exe",
+        "file:///home/user/documents/test.pdf",
+        "file:///tmp/test%20file.txt",
+        "file:///",
+        "file://localhost/",
+    ),
+)
+def test_url_accepts_valid_file_urls(valid_url):
+    validator = validate.URL(schemes={"file"})
+    assert validator(valid_url) == valid_url
+
+
+@pytest.mark.parametrize(
+    "invalid_url",
+    (
+        "file://",
+        "file:/tmp/file.txt",
+        "file:tmp/file.txt",
+        "file://hostname/path",
+        "file:///tmp/test file.txt",
+    ),
+)
+def test_url_rejects_invalid_file_urls(invalid_url):
+    validator = validate.URL(schemes={"file"})
+    with pytest.raises(ValidationError, match="Not a valid URL."):
+        assert validator(invalid_url)
 
 
 def test_url_relative_and_custom_schemes():
@@ -357,7 +391,7 @@ def test_range_repr():
                 min=None, max=None, error=None, min_inclusive=True, max_inclusive=True
             )
         )
-        == "<Range(min=None, max=None, min_inclusive=True, max_inclusive=True, error=None)>"  # noqa: B950
+        == "<Range(min=None, max=None, min_inclusive=True, max_inclusive=True, error=None)>"
     )
     assert (
         repr(
@@ -365,7 +399,7 @@ def test_range_repr():
                 min=1, max=3, error="foo", min_inclusive=False, max_inclusive=False
             )
         )
-        == "<Range(min=1, max=3, min_inclusive=False, max_inclusive=False, error={!r})>".format(  # noqa: B950
+        == "<Range(min=1, max=3, min_inclusive=False, max_inclusive=False, error={!r})>".format(
             "foo"
         )
     )
@@ -421,12 +455,12 @@ def test_length_equal():
         validate.Length(equal=2)("foo")
     with pytest.raises(ValidationError):
         validate.Length(equal=2)([1, 2, 3])
-
-    with pytest.raises(ValueError):
+    error_message = "The `equal` parameter was provided, maximum or minimum parameter must not be provided"
+    with pytest.raises(ValueError, match=error_message):
         validate.Length(1, None, equal=3)("foo")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=error_message):
         validate.Length(None, 5, equal=3)("foo")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=error_message):
         validate.Length(1, 5, equal=3)("foo")
 
 

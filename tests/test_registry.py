@@ -14,7 +14,7 @@ def test_serializer_has_class_registry():
     assert "MySchema" in class_registry._registry
     assert "MySubSchema" in class_registry._registry
 
-    #  by fullpath
+    # by fullpath
     assert "tests.test_registry.MySchema" in class_registry._registry
     assert "tests.test_registry.MySubSchema" in class_registry._registry
 
@@ -57,27 +57,33 @@ def test_serializer_class_registry_register_same_classname_different_module():
     type("MyTestRegSchema", (Schema,), {"__module__": "modA"})
 
     assert "MyTestRegSchema" in class_registry._registry
-    assert len(class_registry._registry.get("MyTestRegSchema")) == 1
+    result = class_registry._registry.get("MyTestRegSchema")
+    assert isinstance(result, list)
+    assert len(result) == 1
     assert "modA.MyTestRegSchema" in class_registry._registry
-    #  storing for classname and fullpath
+    # storing for classname and fullpath
     assert len(class_registry._registry) == reglen + 2
 
     type("MyTestRegSchema", (Schema,), {"__module__": "modB"})
 
     assert "MyTestRegSchema" in class_registry._registry
-    #  aggregating classes with same name from different modules
-    assert len(class_registry._registry.get("MyTestRegSchema")) == 2
+    # aggregating classes with same name from different modules
+    result = class_registry._registry.get("MyTestRegSchema")
+    assert isinstance(result, list)
+    assert len(result) == 2
     assert "modB.MyTestRegSchema" in class_registry._registry
-    #  storing for same classname (+0) and different module (+1)
+    # storing for same classname (+0) and different module (+1)
     assert len(class_registry._registry) == reglen + 2 + 1
 
     type("MyTestRegSchema", (Schema,), {"__module__": "modB"})
 
     assert "MyTestRegSchema" in class_registry._registry
-    #  only the class with matching module has been replaced
-    assert len(class_registry._registry.get("MyTestRegSchema")) == 2
+    # only the class with matching module has been replaced
+    result = class_registry._registry.get("MyTestRegSchema")
+    assert isinstance(result, list)
+    assert len(result) == 2
     assert "modB.MyTestRegSchema" in class_registry._registry
-    #  only the class with matching module has been replaced (+0)
+    # only the class with matching module has been replaced (+0)
     assert len(class_registry._registry) == reglen + 2 + 1
 
 
@@ -87,21 +93,30 @@ def test_serializer_class_registry_override_if_same_classname_same_module():
     type("MyTestReg2Schema", (Schema,), {"__module__": "SameModulePath"})
 
     assert "MyTestReg2Schema" in class_registry._registry
-    assert len(class_registry._registry.get("MyTestReg2Schema")) == 1
+    result = class_registry._registry.get("MyTestReg2Schema")
+    assert isinstance(result, list)
+    assert len(result) == 1
     assert "SameModulePath.MyTestReg2Schema" in class_registry._registry
-    assert len(class_registry._registry.get("SameModulePath.MyTestReg2Schema")) == 1
-    #  storing for classname and fullpath
+    result = class_registry._registry.get("SameModulePath.MyTestReg2Schema")
+    assert isinstance(result, list)
+    assert len(result) == 1
+    # storing for classname and fullpath
     assert len(class_registry._registry) == reglen + 2
 
     type("MyTestReg2Schema", (Schema,), {"__module__": "SameModulePath"})
 
     assert "MyTestReg2Schema" in class_registry._registry
-    #  overriding same class name and same module
-    assert len(class_registry._registry.get("MyTestReg2Schema")) == 1
+    # overriding same class name and same module
+    result = class_registry._registry.get("MyTestReg2Schema")
+    assert isinstance(result, list)
+    assert len(result) == 1
+
     assert "SameModulePath.MyTestReg2Schema" in class_registry._registry
-    #  overriding same fullpath
-    assert len(class_registry._registry.get("SameModulePath.MyTestReg2Schema")) == 1
-    #  overriding for same classname (+0) and different module (+0)
+    # overriding same fullpath
+    result = class_registry._registry.get("SameModulePath.MyTestReg2Schema")
+    assert isinstance(result, list)
+    assert len(result) == 1
+    # overriding for same classname (+0) and different module (+0)
     assert len(class_registry._registry) == reglen + 2
 
 
@@ -174,7 +189,7 @@ class FooSerializer(Schema):
 
 def test_multiple_classes_with_same_name_raises_error():
     # Import a class with the same name
-    from .foo_serializer import FooSerializer as FooSerializer1  # noqa
+    from .foo_serializer import FooSerializer as FooSerializer1  # noqa: F401
 
     class MySchema(Schema):
         foo = fields.Nested("FooSerializer")
@@ -189,14 +204,14 @@ def test_multiple_classes_with_same_name_raises_error():
 
 def test_multiple_classes_with_all():
     # Import a class with the same name
-    from .foo_serializer import FooSerializer as FooSerializer1  # noqa
+    from .foo_serializer import FooSerializer as FooSerializer1  # noqa: F401
 
     classes = class_registry.get_class("FooSerializer", all=True)
     assert len(classes) == 2
 
 
 def test_can_use_full_module_path_to_class():
-    from .foo_serializer import FooSerializer as FooSerializer1  # noqa
+    from .foo_serializer import FooSerializer as FooSerializer1  # noqa: F401
 
     # Using full paths is ok
 
@@ -212,5 +227,5 @@ def test_can_use_full_module_path_to_class():
     class Schema2(Schema):
         foo = fields.Nested("tests.test_registry.FooSerializer")
 
-    sch = Schema2()
-    assert sch.dump({"foo": {"_id": 42}})
+    sch2 = Schema2()
+    assert sch2.dump({"foo": {"_id": 42}})

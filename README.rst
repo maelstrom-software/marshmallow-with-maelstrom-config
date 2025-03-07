@@ -20,6 +20,8 @@ marshmallow: simplified object serialization
    :target: https://marshmallow.readthedocs.io/
    :alt: Documentation
 
+.. start elevator-pitch
+
 **marshmallow** is an ORM/ODM/framework-agnostic library for converting complex datatypes, such as objects, to and from native Python datatypes.
 
 .. code-block:: python
@@ -50,30 +52,25 @@ marshmallow: simplified object serialization
     #   'release_date': '1971-12-17',
     #   'title': 'Hunky Dory'}
 
-
 In short, marshmallow schemas can be used to:
 
 - **Validate** input data.
 - **Deserialize** input data to app-level objects.
 - **Serialize** app-level objects to primitive Python types. The serialized objects can then be rendered to standard formats such as JSON for use in an HTTP API.
 
-Get It Now
+Get it now
 ==========
 
-::
+.. code-block:: shell-session
 
     $ pip install -U marshmallow
 
+.. end elevator-pitch
 
 Documentation
 =============
 
 Full documentation is available at https://marshmallow.readthedocs.io/ .
-
-Requirements
-============
-
-- Python >= 3.8
 
 Ecosystem
 =========
@@ -116,15 +113,20 @@ Thank you to all our backers! [`Become a backer`_]
 Sponsors
 --------
 
+.. start sponsors
+
+marshmallow is sponsored by `Route4Me <https://route4me.com>`_.
+
+.. image:: https://github.com/user-attachments/assets/018c2e23-032e-4a11-98da-8b6dc25b9054
+    :target: https://route4me.com
+    :alt: Routing Planner
+
 Support this project by becoming a sponsor (or ask your company to support this project by becoming a sponsor).
-Your logo will show up here with a link to your website. [`Become a sponsor`_]
+Your logo will be displayed here with a link to your website. [`Become a sponsor`_]
 
 .. _`Become a sponsor`: https://opencollective.com/marshmallow#sponsor
 
-.. image:: https://opencollective.com/static/images/become_sponsor.svg
-    :target: https://opencollective.com/marshmallow#sponsor
-    :alt: Become a sponsor
-
+.. end sponsors
 
 Professional Support
 ====================

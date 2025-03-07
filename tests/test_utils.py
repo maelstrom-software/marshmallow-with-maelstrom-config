@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import datetime as dt
-from collections import namedtuple
 from copy import copy, deepcopy
-from functools import partial
+from typing import NamedTuple
 
 import pytest
 
 from marshmallow import Schema, fields, utils
-from tests.base import assert_date_equal, assert_time_equal, central
 
 
 def test_missing_singleton_copy():
@@ -14,7 +14,9 @@ def test_missing_singleton_copy():
     assert deepcopy(utils.missing) is utils.missing
 
 
-PointNT = namedtuple("PointNT", ["x", "y"])
+class PointNT(NamedTuple):
+    x: int | None
+    y: int | None
 
 
 class PointClass:
@@ -78,7 +80,7 @@ def test_get_value():
 
 
 def test_set_value():
-    d = {}
+    d: dict[str, int | dict] = {}
     utils.set_value(d, "foo", 42)
     assert d == {"foo": 42}
 
@@ -95,137 +97,10 @@ def test_set_value():
         utils.set_value(d, "foo.bar", 42)
 
 
-def test_is_keyed_tuple():
-    Point = namedtuple("Point", ["x", "y"])
-    p = Point(24, 42)
-    assert utils.is_keyed_tuple(p) is True
-    t = (24, 42)
-    assert utils.is_keyed_tuple(t) is False
-    d = {"x": 42, "y": 24}
-    assert utils.is_keyed_tuple(d) is False
-    s = "xy"
-    assert utils.is_keyed_tuple(s) is False
-    lst = [24, 42]
-    assert utils.is_keyed_tuple(lst) is False
-
-
 def test_is_collection():
     assert utils.is_collection([1, "foo", {}]) is True
     assert utils.is_collection(("foo", 2.3)) is True
     assert utils.is_collection({"foo": "bar"}) is False
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        (dt.datetime(2013, 11, 10, 1, 23, 45), "Sun, 10 Nov 2013 01:23:45 -0000"),
-        (
-            dt.datetime(2013, 11, 10, 1, 23, 45, tzinfo=dt.timezone.utc),
-            "Sun, 10 Nov 2013 01:23:45 +0000",
-        ),
-        (
-            central.localize(dt.datetime(2013, 11, 10, 1, 23, 45), is_dst=False),
-            "Sun, 10 Nov 2013 01:23:45 -0600",
-        ),
-    ],
-)
-def test_rfc_format(value, expected):
-    assert utils.rfcformat(value) == expected
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        (dt.datetime(2013, 11, 10, 1, 23, 45), "2013-11-10T01:23:45"),
-        (
-            dt.datetime(2013, 11, 10, 1, 23, 45, 123456, tzinfo=dt.timezone.utc),
-            "2013-11-10T01:23:45.123456+00:00",
-        ),
-        (
-            dt.datetime(2013, 11, 10, 1, 23, 45, tzinfo=dt.timezone.utc),
-            "2013-11-10T01:23:45+00:00",
-        ),
-        (
-            central.localize(dt.datetime(2013, 11, 10, 1, 23, 45), is_dst=False),
-            "2013-11-10T01:23:45-06:00",
-        ),
-    ],
-)
-def test_isoformat(value, expected):
-    assert utils.isoformat(value) == expected
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        ("Sun, 10 Nov 2013 01:23:45 -0000", dt.datetime(2013, 11, 10, 1, 23, 45)),
-        (
-            "Sun, 10 Nov 2013 01:23:45 +0000",
-            dt.datetime(2013, 11, 10, 1, 23, 45, tzinfo=dt.timezone.utc),
-        ),
-        (
-            "Sun, 10 Nov 2013 01:23:45 -0600",
-            central.localize(dt.datetime(2013, 11, 10, 1, 23, 45), is_dst=False),
-        ),
-    ],
-)
-def test_from_rfc(value, expected):
-    result = utils.from_rfc(value)
-    assert type(result) is dt.datetime
-    assert result == expected
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        ("2013-11-10T01:23:45", dt.datetime(2013, 11, 10, 1, 23, 45)),
-        (
-            "2013-11-10T01:23:45+00:00",
-            dt.datetime(2013, 11, 10, 1, 23, 45, tzinfo=dt.timezone.utc),
-        ),
-        (
-            # Regression test for https://github.com/marshmallow-code/marshmallow/issues/1251
-            "2013-11-10T01:23:45.123+00:00",
-            dt.datetime(2013, 11, 10, 1, 23, 45, 123000, tzinfo=dt.timezone.utc),
-        ),
-        (
-            "2013-11-10T01:23:45.123456+00:00",
-            dt.datetime(2013, 11, 10, 1, 23, 45, 123456, tzinfo=dt.timezone.utc),
-        ),
-        (
-            "2013-11-10T01:23:45-06:00",
-            central.localize(dt.datetime(2013, 11, 10, 1, 23, 45), is_dst=False),
-        ),
-    ],
-)
-def test_from_iso_datetime(value, expected):
-    result = utils.from_iso_datetime(value)
-    assert type(result) is dt.datetime
-    assert result == expected
-
-
-def test_from_iso_time_with_microseconds():
-    t = dt.time(1, 23, 45, 6789)
-    formatted = t.isoformat()
-    result = utils.from_iso_time(formatted)
-    assert type(result) is dt.time
-    assert_time_equal(result, t)
-
-
-def test_from_iso_time_without_microseconds():
-    t = dt.time(1, 23, 45)
-    formatted = t.isoformat()
-    result = utils.from_iso_time(formatted)
-    assert type(result) is dt.time
-    assert_time_equal(result, t)
-
-
-def test_from_iso_date():
-    d = dt.date(2014, 8, 21)
-    iso_date = d.isoformat()
-    result = utils.from_iso_date(iso_date)
-    assert type(result) is dt.date
-    assert_date_equal(result, d)
 
 
 @pytest.mark.parametrize(
@@ -249,29 +124,13 @@ def test_from_timestamp_with_negative_value():
 
 def test_from_timestamp_with_overflow_value():
     value = 9223372036854775
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="out of range"):
         utils.from_timestamp(value)
-
-
-def test_get_func_args():
-    def f1(foo, bar):
-        pass
-
-    f2 = partial(f1, "baz")
-
-    class F3:
-        def __call__(self, foo, bar):
-            pass
-
-    f3 = F3()
-
-    for func in [f1, f2, f3]:
-        assert utils.get_func_args(func) == ["foo", "bar"]
 
 
 # Regression test for https://github.com/marshmallow-code/marshmallow/issues/540
 def test_function_field_using_type_annotation():
-    def get_split_words(value: str):  # noqa
+    def get_split_words(value: str):
         return value.split(";")
 
     class MySchema(Schema):
